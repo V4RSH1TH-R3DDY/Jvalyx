@@ -2,5 +2,12 @@
 
 from .replay import ReplayEngine, ReplayStatus
 from .scenario_loader import ScenarioCatalog
+from .gis_export import export_predictions_geojson, predictions_to_geojson
 
-__all__ = ["ReplayEngine", "ReplayStatus", "ScenarioCatalog"]
+__all__ = [
+    "ReplayEngine",
+    "ReplayStatus",
+    "ScenarioCatalog",
+    "export_predictions_geojson",
+    "predictions_to_geojson",
+]
