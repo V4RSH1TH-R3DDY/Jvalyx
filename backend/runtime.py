@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from backend.config import AppConfig, load_config
@@ -16,6 +17,21 @@ from backend.models import EventIntelligence, ReplayScenario, RouteState
 from backend.models.schemas import DataMode
 from backend.pipeline import ReplayEngine, ReplayStatus, ScenarioCatalog, process_frame
 from backend.storage import EventStore, event_store
+
+
+RouteObserver = Callable[[EventIntelligence], Awaitable[None]]
+
+# Notified whenever a frame is published. Registered by backend.api.cbs, so the
+# cell-broadcast layer can fire on a CRITICAL decision without runtime having to
+# import the API package back.
+route_observers: list[RouteObserver] = []
+
+
+async def notify_route_observers(intelligence: EventIntelligence) -> None:
+    for observer in route_observers:
+        # An observer is a side channel: a failing alert must never stall replay.
+        with contextlib.suppress(Exception):
+            await observer(intelligence)
 
 
 class Broadcaster:
@@ -259,6 +275,7 @@ class ReplayWorker:
                     },
                 }
             )
+            await notify_route_observers(intelligence)
 
         with contextlib.suppress(asyncio.CancelledError):
             await self._engine.run(publish)
@@ -285,6 +302,7 @@ class ReplayWorker:
             }
         )
         await self._broadcaster.publish(self._status_message(reason))
+        await notify_route_observers(intelligence)
         return intelligence
 
     def _persist_frame(self, index: int) -> EventIntelligence:

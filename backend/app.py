@@ -18,6 +18,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from backend.api import cbs as cbs_routes
 from backend.api import config as config_routes
 from backend.api import events as events_routes
 from backend.api import facilities as facilities_routes
@@ -109,6 +110,7 @@ def create_app() -> FastAPI:
     app.include_router(weather_routes.router)
     app.include_router(facilities_routes.router)
     app.include_router(triage_routes.router)
+    app.include_router(cbs_routes.router)
 
     return app
 
