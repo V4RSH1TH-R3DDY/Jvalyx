@@ -167,7 +167,48 @@ export const jvalyxApi = {
       synced_offshore: number;
       pending_offshore: number;
     }>('/audit/offshore-sync', { method: 'POST' }),
+
+  // -- Cell broadcast (see docs/cell-broadcast.md) --------------------------
+  cbsStatus: () => request<BackendCbsStatus>('/cbs/status'),
+  cbsBroadcast: (body: CbsBroadcastRequest) =>
+    request<BackendCbsReceipt>('/cbs/broadcast', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 };
+
+export interface BackendCbsStatus {
+  devices_attached: number;
+  located: number;
+  cells: Record<string, number>;
+  armed: boolean;
+  venue: { latitude: number; longitude: number };
+  ntfy_topic: string | null;
+  last_alert: Record<string, unknown> | null;
+}
+
+export interface CbsBroadcastRequest {
+  event_id?: string;
+  route_state?: BackendRouteState;
+  latitude?: number;
+  longitude?: number;
+  area_desc?: string;
+  radius_km?: number;
+  status?: 'Actual' | 'Exercise' | 'Test';
+}
+
+export interface BackendCbsReceipt {
+  identifier: string;
+  severity: string;
+  cmas_class: string;
+  message_identifier: number;
+  status: string;
+  cells_in_footprint: string[];
+  devices_attached: number;
+  devices_in_footprint: number;
+  ntfy_dispatched: boolean;
+  cap_xml_url: string;
+}
 
 export type JvalyxSocketMessage =
   | { type: 'snapshot'; status: BackendReplayStatus; events: BackendEventIntelligence[] }
