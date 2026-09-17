@@ -50,6 +50,11 @@
   button.fire { color: #fff; width: 100%; font-size: 17px; letter-spacing: .02em; margin-top: 6px; }
   button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
 
+  .offline {
+    margin-bottom: 14px; padding: 10px 12px; border-radius: 9px;
+    border: 1px solid var(--extreme); background: rgba(215, 38, 61, .14);
+    color: #ff9aa8; font-size: 12.5px; font-weight: 600;
+  }
   .cells { margin-top: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: var(--muted); }
   .cells span { display: inline-block; background: #0e1218; border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; margin: 0 6px 6px 0; color: var(--text); }
   #receipt { margin-top: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; white-space: pre-wrap; color: var(--ok); }
@@ -78,6 +83,9 @@
 
     <div class="card">
       <h2>Network</h2>
+      <div class="offline" id="stale" hidden>
+        Backend unreachable — counts below are not live.
+      </div>
       <div class="counts">
         <div class="stat"><b id="c-devices">0</b><span>Attached</span></div>
         <div class="stat"><b id="c-located">0</b><span>GPS located</span></div>
@@ -134,7 +142,9 @@
 
   async function refresh() {
     try {
-      const status = await (await fetch("/cbs/status")).json();
+      const response = await fetch("/cbs/status", { cache: "no-store" });
+      if (!response.ok) throw new Error(`status ${response.status}`);
+      const status = await response.json();
       $("c-devices").textContent = status.devices_attached;
       $("c-located").textContent = status.located;
       const cells = Object.entries(status.cells);
@@ -142,7 +152,14 @@
       $("cell-list").innerHTML = cells.length
         ? cells.map(([id, n]) => `<span>${id} · ${n}</span>`).join("")
         : "No handsets attached yet.";
-    } catch (_) { /* console keeps running even if a poll fails */ }
+      $("stale").hidden = true;
+    } catch (_) {
+      // Never leave a stale count on screen. A frozen "2 attached" reads as
+      // working right up until the broadcast reaches nobody.
+      for (const id of ["c-devices", "c-located", "c-cells"]) $(id).textContent = "—";
+      $("cell-list").textContent = "Backend unreachable — restart it, then reload this page.";
+      $("stale").hidden = false;
+    }
   }
 
   async function loadJoin() {
