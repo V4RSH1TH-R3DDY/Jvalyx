@@ -19,6 +19,7 @@ import { FIRE_CLASSES } from '../../data/scenarios';
 import type { FireClassId, RouteState } from '../../types';
 import { cn } from './ui';
 import { FireAlertBroadcast } from './FireAlertBroadcast';
+import { SatelliteCrop } from './SatelliteCrop';
 import { FIRE_CLASS_PNG, CLASS_ID_TO_KEY } from '../analysis/iconMap';
 
 const ROUTE_STYLE: Record<RouteState, { bg: string; icon: typeof ShieldAlert; label: string }> = {
@@ -129,6 +130,10 @@ export function HotspotAnalysis() {
                 {triage.source === 'model' ? 'Live model' : backendUnavailable ? 'Offline heuristic (backend unreachable)' : 'Offline heuristic'}
               </span>
             </div>
+
+            {detection && (
+              <SatelliteCrop latitude={detection.latitude} longitude={detection.longitude} />
+            )}
 
             <RouteBanner route={triage.routeState} />
 
