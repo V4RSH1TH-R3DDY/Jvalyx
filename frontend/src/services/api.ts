@@ -193,6 +193,9 @@ export interface CbsBroadcastRequest {
   latitude?: number;
   longitude?: number;
   area_desc?: string;
+  /** CAP `<event>` — carries the fire class, e.g. "Class 3 — Industrial Flare". */
+  event?: string;
+  headline?: string;
   radius_km?: number;
   status?: 'Actual' | 'Exercise' | 'Test';
 }

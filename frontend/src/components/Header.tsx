@@ -14,7 +14,6 @@ import {
   PlugZap,
 } from 'lucide-react';
 import type { RouteState } from '../types';
-import { CellBroadcastButton } from './CellBroadcastButton';
 
 export interface HeaderConnection {
   status: 'connecting' | 'online' | 'offline';
@@ -267,8 +266,6 @@ export const Header: React.FC<HeaderProps> = ({
             <BadgeIcon className="h-4 w-4 shrink-0" />
             <span className="font-mono text-xs font-bold tracking-wider">{badge.label}</span>
           </div>
-
-          <CellBroadcastButton />
 
           <button
             onClick={onOpenAuditLog}
