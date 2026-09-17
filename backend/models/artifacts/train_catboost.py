@@ -253,6 +253,11 @@ def train_and_save_model(csv_path: str | None = None, max_majority_ratio: int = 
         cat_features = CATEGORICAL_FEATURES
         auto_class_weights = None  # already artificially balanced 1:1
 
+    # Restrict Industrial Escalations (1) and Mining Fires (3) to industrial polygons
+    mask = ~np.isin(y, [1, 3]) | (X["is_in_industrial_polygon"] == 1)
+    X = X[mask]
+    y = y[mask]
+
     X_train, X_val, y_train, y_val = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )

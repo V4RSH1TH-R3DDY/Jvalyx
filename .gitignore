@@ -14,3 +14,6 @@ data/jvalyx_audit.db-wal
 
 # Derived training data (multi-GB, regenerable from raw FIRMS exports) - not source.
 /data/training/
+
+# Local runtime data (volatile FIRMS exports, caches, audit DBs) - not source.
+/data/

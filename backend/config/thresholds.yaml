@@ -14,7 +14,7 @@ fusion:
   geostationary_window_minutes: 45
 
 arbitration:
-  class1_threshold: 0.45
+  class1_threshold: 0.60
   class2_threshold: 0.55
   facility_z_threshold: 4.0
   anomaly_threshold: 0.75
