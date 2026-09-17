@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jvalyx · Cell Broadcast Console</title>
+<style>
+  :root {
+    --bg: #0a0c10; --panel: #12161d; --line: #232b36;
+    --text: #e8edf4; --muted: #8b97a8; --ok: #35d07f;
+    --extreme: #d7263d; --severe: #e07b18;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 28px 20px 48px;
+  }
+  .shell { max-width: 1060px; margin: 0 auto; }
+  header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  h1 { font-size: 21px; margin: 0; letter-spacing: -.01em; }
+  .tag { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  p.lede { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+
+  .grid { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+  h2 { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; font-weight: 600; }
+
+  #qr { width: 100%; aspect-ratio: 1; border-radius: 10px; background: #fff; display: block; object-fit: contain; }
+  .url { margin-top: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; color: var(--ok); }
+
+  .counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+  .stat { background: #0e1218; border: 1px solid var(--line); border-radius: 11px; padding: 14px; }
+  .stat b { display: block; font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+  .stat span { font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+
+  label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 5px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+  input, select {
+    font: inherit; width: 100%; padding: 10px 12px; color: var(--text);
+    background: #0e1218; border: 1px solid var(--line); border-radius: 9px;
+  }
+  button {
+    font: inherit; font-weight: 650; border: 0; border-radius: 11px;
+    padding: 15px 18px; cursor: pointer; color: #06080b; background: var(--extreme);
+  }
+  button.fire { color: #fff; width: 100%; font-size: 17px; letter-spacing: .02em; margin-top: 6px; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+
+  .offline {
+    margin-bottom: 14px; padding: 10px 12px; border-radius: 9px;
+    border: 1px solid var(--extreme); background: rgba(215, 38, 61, .14);
+    color: #ff9aa8; font-size: 12.5px; font-weight: 600;
+  }
+  .cells { margin-top: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .cells span { display: inline-block; background: #0e1218; border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; margin: 0 6px 6px 0; color: var(--text); }
+  #receipt { margin-top: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; white-space: pre-wrap; color: var(--ok); }
+  .note { color: var(--muted); font-size: 12.5px; margin-top: 14px; }
+  a { color: var(--ok); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <h1>Cell Broadcast Console</h1>
+    <span class="tag">Jvalyx · CBC simulator</span>
+  </header>
+  <p class="lede">
+    Alerts are addressed to an <em>area</em>, never to a device. Handsets inside the
+    footprint receive; handsets outside it are never contacted.
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Join</h2>
+      <img id="qr" alt="QR code to join the alert network" src="/cbs/qr">
+      <div class="url" id="join-url">loading…</div>
+      <p class="note">Phones must be on the same Wi-Fi. Scan, then tap “Attach to network”.</p>
+    </div>
+
+    <div class="card">
+      <h2>Network</h2>
+      <div class="offline" id="stale" hidden>
+        Backend unreachable — counts below are not live.
+      </div>
+      <div class="counts">
+        <div class="stat"><b id="c-devices">0</b><span>Attached</span></div>
+        <div class="stat"><b id="c-located">0</b><span>GPS located</span></div>
+        <div class="stat"><b id="c-cells">0</b><span>Cells</span></div>
+      </div>
+      <div class="cells" id="cell-list">No handsets attached yet.</div>
+
+      <h2 style="margin-top:26px">Author alert</h2>
+      <div class="row">
+        <div>
+          <label for="f-event">Live event (optional)</label>
+          <select id="f-event"><option value="">— manual coordinates —</option></select>
+        </div>
+        <div>
+          <label for="f-severity">Routing state</label>
+          <select id="f-severity">
+            <option value="CRITICAL">CRITICAL → Extreme (4371)</option>
+            <option value="UNCERTAIN">UNCERTAIN → Severe (4373)</option>
+            <option value="NORMAL">NORMAL → Amber (4379)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div><label for="f-lat">Latitude</label><input id="f-lat" value="12.9716"></div>
+        <div><label for="f-lon">Longitude</label><input id="f-lon" value="77.5946"></div>
+      </div>
+      <div class="row">
+        <div><label for="f-area">Area description</label><input id="f-area" value="MRPL Petrochemical Complex"></div>
+        <div><label for="f-radius">Radius (km)</label><input id="f-radius" value="10"></div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="f-status">CAP status</label>
+          <select id="f-status">
+            <option value="Exercise">Exercise (drill)</option>
+            <option value="Actual">Actual</option>
+          </select>
+        </div>
+        <div style="display:flex; align-items:flex-end">
+          <button class="ghost" id="fill-venue" style="width:100%">Use venue coordinates</button>
+        </div>
+      </div>
+
+      <button class="fire" id="fire">BROADCAST TO FOOTPRINT</button>
+      <div id="receipt"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+
+  async function refresh() {
+    try {
+      const response = await fetch("/cbs/status", { cache: "no-store" });
+      if (!response.ok) throw new Error(`status ${response.status}`);
+      const status = await response.json();
+      $("c-devices").textContent = status.devices_attached;
+      $("c-located").textContent = status.located;
+      const cells = Object.entries(status.cells);
+      $("c-cells").textContent = cells.length;
+      $("cell-list").innerHTML = cells.length
+        ? cells.map(([id, n]) => `<span>${id} · ${n}</span>`).join("")
+        : "No handsets attached yet.";
+      $("stale").hidden = true;
+    } catch (_) {
+      // Never leave a stale count on screen. A frozen "2 attached" reads as
+      // working right up until the broadcast reaches nobody.
+      for (const id of ["c-devices", "c-located", "c-cells"]) $(id).textContent = "—";
+      $("cell-list").textContent = "Backend unreachable — restart it, then reload this page.";
+      $("stale").hidden = false;
+    }
+  }
+
+  async function loadJoin() {
+    const join = await (await fetch("/cbs/join")).json();
+    $("join-url").textContent = join.join_url;
+  }
+
+  async function loadEvents() {
+    try {
+      const events = await (await fetch("/events")).json();
+      const select = $("f-event");
+      for (const event of events) {
+        const option = document.createElement("option");
+        option.value = event.event_id;
+        option.textContent = `${event.label} (${event.route_state})`;
+        select.append(option);
+      }
+    } catch (_) { /* no replay loaded: manual coordinates still work */ }
+  }
+
+  $("fill-venue").addEventListener("click", async () => {
+    const status = await (await fetch("/cbs/status")).json();
+    $("f-lat").value = status.venue.latitude;
+    $("f-lon").value = status.venue.longitude;
+    $("f-area").value = "Venue — live demonstration";
+  });
+
+  $("fire").addEventListener("click", async () => {
+    const eventId = $("f-event").value;
+    const body = eventId
+      ? { event_id: eventId, status: $("f-status").value, radius_km: parseFloat($("f-radius").value) }
+      : {
+          route_state: $("f-severity").value,
+          latitude: parseFloat($("f-lat").value),
+          longitude: parseFloat($("f-lon").value),
+          area_desc: $("f-area").value,
+          radius_km: parseFloat($("f-radius").value),
+          status: $("f-status").value,
+        };
+
+    $("fire").disabled = true;
+    try {
+      const response = await fetch("/cbs/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail ?? "broadcast failed");
+      $("receipt").textContent =
+        `${data.identifier}\n` +
+        `${data.cmas_class} · msg id ${data.message_identifier} · ${data.status}\n` +
+        `footprint: ${data.devices_in_footprint}/${data.devices_attached} handsets, ` +
+        `${data.cells_in_footprint.length} cell(s)\n` +
+        `ntfy: ${data.ntfy_dispatched ? "dispatched" : "not configured"}\n` +
+        `CAP XML: ${data.cap_xml_url}`;
+    } catch (error) {
+      $("receipt").textContent = `error: ${error.message}`;
+    } finally {
+      $("fire").disabled = false;
+      refresh();
+    }
+  });
+
+  loadJoin();
+  loadEvents();
+  refresh();
+  setInterval(refresh, 2000);
+})();
+</script>
+</body>
+</html>

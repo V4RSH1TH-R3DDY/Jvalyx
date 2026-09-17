@@ -18,6 +18,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from backend.api import cbs as cbs_routes
 from backend.api import config as config_routes
 from backend.api import events as events_routes
 from backend.api import facilities as facilities_routes
@@ -61,7 +62,14 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=ALLOWED_ORIGINS,
         # 127.0.0.1 as well as localhost: the compose frontend is reachable on both.
-        allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+        # Private LAN ranges too, so a phone on the venue Wi-Fi can load the
+        # dashboard and drive the cell broadcast (docs/cell-broadcast.md).
+        allow_origin_regex=(
+            r"http://(localhost|127\.0\.0\.1"
+            r"|10\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+            r"|192\.168\.\d{1,3}\.\d{1,3}"
+            r"|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}):\d+"
+        ),
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -109,6 +117,7 @@ def create_app() -> FastAPI:
     app.include_router(weather_routes.router)
     app.include_router(facilities_routes.router)
     app.include_router(triage_routes.router)
+    app.include_router(cbs_routes.router)
 
     return app
 

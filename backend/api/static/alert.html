@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0c10">
+<title>Jvalyx Emergency Alert</title>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --panel: #12161d;
+    --line: #232b36;
+    --text: #e8edf4;
+    --muted: #8b97a8;
+    --ok: #35d07f;
+    --extreme: #d7263d;
+    --severe: #e07b18;
+    --amber: #d4a11a;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+  .wrap { min-height: 100%; display: flex; flex-direction: column; padding: 20px 16px; gap: 16px; }
+
+  /* ---------- standby ---------- */
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand b { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.live { background: var(--ok); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .standby-msg { font-size: 19px; font-weight: 600; margin: 0 0 6px; }
+  .sub { color: var(--muted); font-size: 13.5px; margin: 0; }
+
+  dl.meta { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 16px 0 0; font-size: 13px; }
+  dl.meta dt { color: var(--muted); }
+  dl.meta dd { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-align: right; }
+
+  button {
+    font: inherit; font-weight: 650; color: #06080b; background: var(--ok);
+    border: 0; border-radius: 12px; padding: 16px; width: 100%; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:disabled { opacity: .45; cursor: default; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+
+  .foot { margin-top: auto; color: var(--muted); font-size: 11.5px; text-align: center; line-height: 1.6; }
+
+  /* ---------- alert takeover ---------- */
+  #takeover {
+    position: fixed; inset: 0; z-index: 10; display: none;
+    flex-direction: column; padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+    background: var(--extreme); color: #fff; overflow-y: auto;
+  }
+  #takeover.on { display: flex; }
+  #takeover[data-sev="Severe"] { background: var(--severe); }
+  #takeover[data-sev="Minor"] { background: var(--amber); color: #1a1405; }
+  #takeover.flash { animation: flash .85s steps(1) infinite; }
+  @keyframes flash { 50% { filter: brightness(.55); } }
+  @media (prefers-reduced-motion: reduce) {
+    #takeover.flash { animation: none; }
+    .dot.live { animation: none; }
+  }
+
+  .ribbon {
+    align-self: flex-start; font-size: 11px; font-weight: 800; letter-spacing: .18em;
+    text-transform: uppercase; border: 2px solid currentColor; border-radius: 4px; padding: 4px 9px;
+  }
+  .sev { margin: 18px 0 0; font-size: 12px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; opacity: .9; }
+  .headline { margin: 6px 0 0; font-size: clamp(27px, 8.5vw, 42px); line-height: 1.1; font-weight: 800; }
+  .body { margin: 16px 0 0; font-size: 16px; }
+  .instruction { margin: 18px 0 0; padding: 16px; border-radius: 12px; background: rgba(0,0,0,.24); font-size: 17px; font-weight: 600; }
+  .capmeta { margin: 18px 0 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; opacity: .8; word-break: break-all; }
+  #ack { margin-top: 22px; background: rgba(0,0,0,.3); color: inherit; border: 2px solid currentColor; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="brand">
+    <span class="dot" id="dot"></span>
+    <b>Jvalyx Emergency Alert System</b>
+  </div>
+
+  <div class="card">
+    <p class="standby-msg" id="state">Not attached</p>
+    <p class="sub" id="hint">Tap below to attach this handset to the alert network.</p>
+    <dl class="meta">
+      <dt>Device</dt><dd id="m-device">—</dd>
+      <dt>Cell</dt><dd id="m-cell">—</dd>
+      <dt>Position</dt><dd id="m-pos">—</dd>
+    </dl>
+  </div>
+
+  <button id="attach">Attach to network</button>
+  <button class="ghost" id="test" disabled>Test alert tone</button>
+
+  <p class="foot">
+    Simulation of a Cell Broadcast warning system.<br>
+    Not affiliated with NDMA or any government authority.
+  </p>
+</div>
+
+<div id="takeover" data-sev="Extreme">
+  <span class="ribbon" id="t-ribbon">Exercise — Simulation</span>
+  <p class="sev" id="t-sev">Extreme Alert</p>
+  <h1 class="headline" id="t-headline">—</h1>
+  <p class="body" id="t-desc">—</p>
+  <p class="instruction" id="t-instruction">—</p>
+  <p class="capmeta" id="t-meta">—</p>
+  <button id="ack">Acknowledge</button>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const takeover = $("takeover");
+
+  let socket = null, audio = null, wakeLock = null;
+  let sirenStop = null, deviceId = null, retry = 0;
+
+  // ---- the WEA / SAME attention signal: 853 Hz and 960 Hz sounded together ----
+  function startSiren() {
+    if (!audio) return () => {};
+    const gain = audio.createGain();
+    gain.gain.value = 0;
+    gain.connect(audio.destination);
+    const oscillators = [853, 960].map((hz) => {
+      const osc = audio.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = hz;
+      osc.connect(gain);
+      osc.start();
+      return osc;
+    });
+    // Pulse on/off rather than holding a continuous tone.
+    let on = false;
+    const pulse = setInterval(() => {
+      on = !on;
+      gain.gain.setTargetAtTime(on ? 0.22 : 0.0001, audio.currentTime, 0.015);
+    }, 500);
+    return () => {
+      clearInterval(pulse);
+      gain.gain.setTargetAtTime(0.0001, audio.currentTime, 0.02);
+      setTimeout(() => oscillators.forEach((o) => { try { o.stop(); } catch (_) {} }), 120);
+    };
+  }
+
+  function vibrate() {
+    if (!navigator.vibrate) return;
+    // Long-short-long, repeated: the cadence emergency alerts use.
+    navigator.vibrate([700, 250, 700, 250, 700, 250, 1200]);
+  }
+
+  async function holdScreenAwake() {
+    try { wakeLock = await navigator.wakeLock?.request("screen"); } catch (_) {}
+  }
+  function releaseScreen() {
+    try { wakeLock?.release(); } catch (_) {}
+    wakeLock = null;
+  }
+
+  function show(alert) {
+    takeover.dataset.sev = alert.severity;
+    takeover.classList.add("on", "flash");
+    $("t-sev").textContent = `${alert.cmas_class} Alert · ${alert.urgency}`;
+    $("t-headline").textContent = alert.headline;
+    $("t-desc").textContent = alert.description;
+    $("t-instruction").textContent = alert.instruction;
+    $("t-meta").textContent =
+      `CAP ${alert.identifier} · msg id ${alert.message_identifier} · ` +
+      `${alert.area_desc} · r=${alert.radius_km}km · expires ${alert.expires}`;
+
+    const exercise = alert.status !== "Actual";
+    $("t-ribbon").textContent = exercise ? "Exercise — Simulation" : "Actual Alert";
+    $("t-ribbon").style.display = "";
+
+    sirenStop?.();
+    sirenStop = startSiren();
+    vibrate();
+    holdScreenAwake();
+
+    // Emergency alerts do not let you dismiss instantly.
+    const ack = $("ack");
+    ack.disabled = true;
+    let left = 5;
+    ack.textContent = `Acknowledge (${left})`;
+    const tick = setInterval(() => {
+      left -= 1;
+      if (left <= 0) {
+        clearInterval(tick);
+        ack.disabled = false;
+        ack.textContent = "Acknowledge";
+      } else {
+        ack.textContent = `Acknowledge (${left})`;
+      }
+    }, 1000);
+  }
+
+  $("ack").addEventListener("click", () => {
+    takeover.classList.remove("on", "flash");
+    sirenStop?.(); sirenStop = null;
+    navigator.vibrate?.(0);
+    releaseScreen();
+  });
+
+  function setStatus(text, hint, live) {
+    $("state").textContent = text;
+    if (hint !== undefined) $("hint").textContent = hint;
+    $("dot").classList.toggle("live", Boolean(live));
+  }
+
+  function connect() {
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    socket = new WebSocket(`${proto}//${location.host}/ws/cbs`);
+
+    socket.addEventListener("open", () => {
+      retry = 0;
+      setStatus("Attached — monitoring", "This handset will alert on any broadcast covering its cell.", true);
+      sendLocation();
+    });
+
+    socket.addEventListener("message", (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === "attached") {
+        deviceId = data.device_id;
+        $("m-device").textContent = data.device_id;
+        $("m-cell").textContent = data.cell_id;
+        $("m-pos").textContent = data.located ? "GPS" : "venue (assumed)";
+      } else if (data.type === "cell_broadcast") {
+        show(data.alert);
+      }
+    });
+
+    const reconnect = () => {
+      setStatus("Reattaching…", "Connection dropped. Retrying automatically.", false);
+      retry += 1;
+      setTimeout(connect, Math.min(1000 * retry, 5000));
+    };
+    socket.addEventListener("close", reconnect);
+    socket.addEventListener("error", () => socket.close());
+  }
+
+  function sendLocation() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        socket?.send(JSON.stringify({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        }));
+      },
+      () => { /* denied: the server places us in the venue cell */ },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 }
+    );
+  }
+
+  $("attach").addEventListener("click", async () => {
+    // Audio can only start from a user gesture, so attaching doubles as the unlock.
+    audio = new (window.AudioContext || window.webkitAudioContext)();
+    await audio.resume();
+    $("attach").disabled = true;
+    $("attach").textContent = "Attached";
+    $("test").disabled = false;
+    setStatus("Attaching…", "", false);
+    connect();
+  });
+
+  $("test").addEventListener("click", () => {
+    const stop = startSiren();
+    vibrate();
+    setTimeout(stop, 2000);
+  });
+})();
+</script>
+</body>
+</html>

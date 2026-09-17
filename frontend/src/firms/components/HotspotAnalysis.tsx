@@ -18,6 +18,7 @@ import { fetchLiveWeather, type LiveWeatherData } from '../../services/weather';
 import { FIRE_CLASSES } from '../../data/scenarios';
 import type { FireClassId, RouteState } from '../../types';
 import { cn } from './ui';
+import { FireAlertBroadcast } from './FireAlertBroadcast';
 import { FIRE_CLASS_PNG, CLASS_ID_TO_KEY } from '../analysis/iconMap';
 
 const ROUTE_STYLE: Record<RouteState, { bg: string; icon: typeof ShieldAlert; label: string }> = {
@@ -130,6 +131,17 @@ export function HotspotAnalysis() {
             </div>
 
             <RouteBanner route={triage.routeState} />
+
+            {detection && (
+              <FireAlertBroadcast
+                latitude={detection.latitude}
+                longitude={detection.longitude}
+                classId={triage.classId}
+                className={triage.className}
+                routeState={triage.routeState}
+                placeName={triage.context.industrialPolygon?.name}
+              />
+            )}
 
             {triage.context.industrialPolygon && (
               <div className="rounded border border-amber-500/40 bg-amber-950/40 p-2.5">
