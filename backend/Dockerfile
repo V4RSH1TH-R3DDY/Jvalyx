@@ -6,6 +6,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y libexpat1 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY pyproject.toml ./
 COPY backend ./backend
 COPY data ./data
