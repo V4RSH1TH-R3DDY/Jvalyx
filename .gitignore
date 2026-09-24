@@ -17,3 +17,6 @@ data/jvalyx_audit.db-wal
 
 # Local runtime data (volatile FIRMS exports, caches, audit DBs) - not source.
 /data/
+
+env/
+

@@ -76,7 +76,7 @@
   <div class="grid">
     <div class="card">
       <h2>Join</h2>
-      <img id="qr" alt="QR code to join the alert network" src="/cbs/qr">
+      <img id="qr" alt="QR code to join the alert network">
       <div class="url" id="join-url">loading…</div>
       <p class="note">Phones must be on the same Wi-Fi. Scan, then tap “Attach to network”.</p>
     </div>
@@ -163,8 +163,17 @@
   }
 
   async function loadJoin() {
-    const join = await (await fetch("/cbs/join")).json();
+    const response = await fetch("/cbs/join", { cache: "no-store" });
+    if (!response.ok) throw new Error(`join URL request failed (${response.status})`);
+    const join = await response.json();
     $("join-url").textContent = join.join_url;
+
+    const qr = $("qr");
+    qr.src = `/cbs/qr?ts=${Date.now()}`;
+    qr.onerror = () => {
+      qr.alt = "QR code unavailable. Install qrcode[pil] and restart the backend.";
+      $("join-url").textContent += " · QR unavailable; use this URL manually";
+    };
   }
 
   async function loadEvents() {

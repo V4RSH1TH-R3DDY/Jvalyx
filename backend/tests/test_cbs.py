@@ -231,3 +231,10 @@ def test_pages_and_join_url_render():
     assert "Jvalyx Emergency Alert System" in client.get("/alert").text
     assert "Cell Broadcast Console" in client.get("/cbs/console").text
     assert client.get("/cbs/join").json()["join_url"].endswith("/alert")
+
+
+def test_qr_endpoint_returns_a_png():
+    response = client.get("/cbs/qr")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.content.startswith(b"\x89PNG\r\n\x1a\n")
