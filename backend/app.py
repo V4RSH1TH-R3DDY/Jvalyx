@@ -6,6 +6,7 @@ also works — the block below puts the repo root on the path first.
 """
 
 import contextlib
+import os
 from collections.abc import AsyncIterator
 
 if __name__ == "__main__" and __package__ in (None, ""):  # `python app.py` / `python backend/app.py`
@@ -38,6 +39,7 @@ ALLOWED_ORIGINS = [
     # containerised frontend (docker compose `web` service)
     "http://localhost:8080",
     "http://127.0.0.1:8080",
+    *(o.strip() for o in os.getenv("JVALYX_CORS_ORIGINS", "").split(",") if o.strip()),
 ]
 
 

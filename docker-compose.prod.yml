@@ -1,0 +1,42 @@
+# Public deployment overlay:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Caddy is the only thing exposed; it terminates TLS for $DOMAIN and routes
+# /api/* to the backend (prefix stripped) and everything else to the frontend.
+
+services:
+  api:
+    ports: !reset []
+
+  web:
+    ports: !reset []
+    build:
+      args:
+        VITE_API_BASE_URL: "https://${DOMAIN:?set DOMAIN in .env}/api"
+
+  offshore-db:
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: "${DOMAIN}"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+volumes:
+  caddy_data:
+  caddy_config:

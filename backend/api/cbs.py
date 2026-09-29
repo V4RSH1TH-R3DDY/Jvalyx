@@ -96,12 +96,12 @@ class BroadcastRequest(BaseModel):
 
     event_id: str | None = None
     route_state: RouteState = RouteState.CRITICAL
-    latitude: float | None = None
-    longitude: float | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
     area_desc: str | None = None
     event: str = "Industrial Fire"
     headline: str | None = None
-    radius_km: float | None = None
+    radius_km: float | None = Field(default=None, gt=0, le=500)
     status: AlertStatus = AlertStatus.EXERCISE
     ttl_minutes: int = Field(default=30, ge=1, le=1440)
 

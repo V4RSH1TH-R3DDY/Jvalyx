@@ -44,7 +44,7 @@ record of what the adapter reconciles:
 | # | Finding |
 |---|---|
 | M4 | The committed CatBoost artifact keys almost entirely on `lulc_class` / `is_in_industrial_polygon` / `distance_to_industrial_m`, saturates at ~1.0 confidence, has no trained cropland category, and mislabels the curated wildfire (→ mining) and routine-flare (→ industrial fire) scenarios. Measured values and a per-scenario comparison are in `backend/models/artifacts/README.md` §"Measured vocabulary". Needs retraining before it can carry a demo. |
-| M1 | **Partly closed.** `backend/models/artifacts/catboost_model.cbm` is committed and wired in via `backend/pipeline/inference.py` (12 features, classes 1-5). There is still no `ml/` directory and no training code — the artifact cannot be reproduced from this repo. |
+| M1 | **Closed.** `backend/models/artifacts/catboost_model.cbm` is committed and wired in via `backend/pipeline/inference.py` (12 features, classes 1-5). Training code now lives alongside the artifacts (`backend/models/artifacts/train_catboost.py`, `train_isolation_forest.py`) rather than in a separate `ml/` directory. |
 | M2 | **Closed for the digital twin**, which now displays `model_version` / `policy_version` straight from the event payload in the header. The FIRMS live-monitor triage panel still emits its own hard-coded strings. |
 | M3 | **Partly closed.** Class probabilities now come from the trained model. Anomaly scores, segmentation masks and 90-day baselines remain hand-authored in `data/replay/*.json`; the Isolation Forest is still missing entirely, so `anomaly_model_version` stays `iforest-stub-0.1.0`. |
 

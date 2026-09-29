@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     image: jvalyx-backend:0.1.0
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
@@ -12,8 +13,18 @@ services:
       JVALYX_REPLAY_MAX_GAP_SECONDS: "6"
       # `stub` pins the hand-authored probabilities for a scripted demo; see README.
       JVALYX_INFERENCE: "${JVALYX_INFERENCE:-catboost}"
-      OFFSHORE_DB_URL: "${OFFSHORE_DB_URL:-postgresql://jvalyx:jvalyx_secret@offshore-db:5432/jvalyx_offshore}"
+      OFFSHORE_DB_URL: "${OFFSHORE_DB_URL:-postgresql://jvalyx:${POSTGRES_PASSWORD:-jvalyx_secret}@offshore-db:5432/jvalyx_offshore}"
       OFFSHORE_DB_KEY: "${OFFSHORE_DB_KEY:-}"
+      FIRMS_MAP_KEY: "${FIRMS_MAP_KEY:-}"
+      JVALYX_CORS_ORIGINS: "${JVALYX_CORS_ORIGINS:-}"
+      JVALYX_NTFY_TOPIC: "${JVALYX_NTFY_TOPIC:-}"
+      # Audit log and live caches on a volume so they survive container rebuilds.
+      JVALYX_DB_PATH: /app/state/jvalyx_audit.db
+      JVALYX_FIRMS_HISTORY: /app/state/firms_history.sqlite
+      JVALYX_LANDCOVER_CACHE: /app/state/landcover_cache.sqlite
+      JVALYX_WORLDCOVER_DIR: /app/state/worldcover
+    volumes:
+      - api_state:/app/state
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
       interval: 10s
@@ -34,6 +45,7 @@ services:
         VITE_FIRMS_MAP_KEY: "${VITE_FIRMS_MAP_KEY:-}"
         VITE_CARTO_API_KEY: "${VITE_CARTO_API_KEY:-}"
     image: jvalyx-frontend:0.1.0
+    restart: unless-stopped
     ports:
       - "8080:80"
     depends_on:
@@ -42,9 +54,10 @@ services:
 
   offshore-db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: jvalyx
-      POSTGRES_PASSWORD: jvalyx_secret
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-jvalyx_secret}"
       POSTGRES_DB: jvalyx_offshore
     ports:
       - "5432:5432"
@@ -58,4 +71,5 @@ services:
 
 volumes:
   offshore_pgdata:
+  api_state:
 
