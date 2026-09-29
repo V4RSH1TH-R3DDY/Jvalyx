@@ -21,5 +21,7 @@ data/jvalyx_audit.db-wal
 env/
 
 
-# Deployment secrets
+# Local config; contains no secrets today but real credentials get filled in here
+# during development (OFFSHORE_DB_URL/OFFSHORE_DB_KEY, FIRMS_MAP_KEY) - don't track it.
+.env
 .env.production

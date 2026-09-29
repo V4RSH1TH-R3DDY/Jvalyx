@@ -13,7 +13,7 @@ services:
       JVALYX_REPLAY_MAX_GAP_SECONDS: "6"
       # `stub` pins the hand-authored probabilities for a scripted demo; see README.
       JVALYX_INFERENCE: "${JVALYX_INFERENCE:-catboost}"
-      OFFSHORE_DB_URL: "${OFFSHORE_DB_URL:-postgresql://jvalyx:${POSTGRES_PASSWORD:-jvalyx_secret}@offshore-db:5432/jvalyx_offshore}"
+      OFFSHORE_DB_URL: "${OFFSHORE_DB_URL:-postgresql://jvalyx:${POSTGRES_PASSWORD}@offshore-db:5432/jvalyx_offshore}"
       OFFSHORE_DB_KEY: "${OFFSHORE_DB_KEY:-}"
       FIRMS_MAP_KEY: "${FIRMS_MAP_KEY:-}"
       JVALYX_CORS_ORIGINS: "${JVALYX_CORS_ORIGINS:-}"
@@ -57,7 +57,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: jvalyx
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-jvalyx_secret}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
       POSTGRES_DB: jvalyx_offshore
     ports:
       - "5432:5432"

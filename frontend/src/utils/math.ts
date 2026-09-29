@@ -85,7 +85,7 @@ export interface ArbitrationConfig {
 }
 
 export const DEFAULT_ARBITRATION_CONFIG: ArbitrationConfig = {
-  class1_threshold: 0.45,
+  class1_threshold: 0.60,
   class2_threshold: 0.55,
   facility_z_threshold: 4.0,
   anomaly_threshold: 0.75,
@@ -93,6 +93,11 @@ export const DEFAULT_ARBITRATION_CONFIG: ArbitrationConfig = {
   min_model_confidence: 0.55
 };
 
+/**
+ * Port of `backend/pipeline/arbitration.py::arbitrate`. Keep the two in sync — this is
+ * only exercised by the offline (no-backend) fallback, so drift here is invisible until
+ * someone is actually running disconnected.
+ */
 export function routeEvent(
   probs: Record<number, number>,
   anomalyScore: number,
@@ -100,11 +105,15 @@ export function routeEvent(
   facilityZ: number,
   fusionState: SensorAgreementState,
   qualityScore: number,
-  cfg: ArbitrationConfig = DEFAULT_ARBITRATION_CONFIG
+  cfg: ArbitrationConfig = DEFAULT_ARBITRATION_CONFIG,
+  lulcInVocabulary: boolean = true,
+  historyComplete: boolean = true,
+  onWater: boolean = false
 ): RouteState {
   const p1 = probs[1] || 0;
   const p2 = probs[2] || 0;
-  const maxP = Math.max(...Object.values(probs));
+  const entries = Object.entries(probs);
+  const maxP = entries.length ? Math.max(...entries.map(([, p]) => p)) : 0;
 
   const disagreement = fusionState === 'disagreement';
 
@@ -121,9 +130,17 @@ export function routeEvent(
     disagreement ||
     anomalyScore >= cfg.anomaly_threshold ||
     qualityScore < cfg.min_quality ||
-    maxP < cfg.min_model_confidence;
+    maxP < cfg.min_model_confidence ||
+    !lulcInVocabulary ||
+    !historyComplete;
 
-  if (disagreement) return 'UNCERTAIN';
+  if (disagreement || !historyComplete) return 'UNCERTAIN';
+  // Water land cover under an "unusual industrial fire" call is mostly ash ponds,
+  // reservoirs and river banks next to routine sites — never auto-escalate it.
+  const topClass = entries.length
+    ? Number(entries.reduce((a, b) => (b[1] > a[1] ? b : a))[0])
+    : null;
+  if (onWater && topClass === 1) return 'UNCERTAIN';
   if (critical) return 'CRITICAL';
   if (uncertain) return 'UNCERTAIN';
   return 'NORMAL';
@@ -137,7 +154,7 @@ export function generatePlumeCorridor(
   origin: [number, number], // [lat, lon]
   windSpeedMps: number,
   windDirectionDeg: number, // direction TOWARD which wind travels
-  samples: number = 60
+  samples: number = 250
 ): PlumeEnvelope {
   const [lat0, lon0] = origin;
   // Convert wind speed to km/h projection

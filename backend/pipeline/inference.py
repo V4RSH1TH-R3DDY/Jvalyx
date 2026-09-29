@@ -96,14 +96,14 @@ def normalize_lulc(raw: Any) -> str:
     """Map a land-cover label to its ESA WorldCover code, passing codes through."""
     value = str(raw or "").strip()
     if not value:
-        return "40"
+        return "0"
     try:
         code = str(int(float(value)))
         if code in ("12", "14"):
             return "40"
         return code
     except ValueError:
-        return LULC_LABEL_TO_CODE.get(value.lower().replace(" ", "_"), "40")
+        return LULC_LABEL_TO_CODE.get(value.lower().replace(" ", "_"), "0")
 
 
 def model_lulc_token(code: str) -> str:
@@ -164,44 +164,20 @@ def build_feature_row(
 
     ti4 = weighted("bright_ti4_k", 0.0)
     ti5 = weighted("bright_ti5_k", 0.0)
-    import json
-    import numpy as np
-    from scipy.spatial import cKDTree
 
-    # Attempt to load geojson once and compute
-    global _geo_tree
-    if '_geo_tree' not in globals():
-        _geo_tree = None
-        geo_path = Path("/home/varshith/Downloads/INDIA_ENERGY_PLANTS.geojson")
-        if geo_path.exists():
-            try:
-                with open(geo_path) as f:
-                    gdata = json.load(f)
-                coords = [f["geometry"]["coordinates"][::-1] for f in gdata.get("features", []) if f.get("geometry", {}).get("type") == "Point"]
-                if coords:
-                    _geo_tree = cKDTree(np.radians(np.array(coords)))
-            except Exception:
-                pass
-
-    if _geo_tree is not None:
-        rad_coords = np.radians(np.array([[lead.latitude, lead.longitude]]))
-        dist, _ = _geo_tree.query(rad_coords, k=1)
-        dist_m = float(dist[0]) * 6371000.0
-        in_polygon = dist_m <= 1000.0
+    raw_poly = context.get("is_in_industrial_polygon", False)
+    if isinstance(raw_poly, str):
+        in_polygon = raw_poly.strip().lower() == "true"
     else:
-        raw_poly = context.get("is_in_industrial_polygon", False)
-        if isinstance(raw_poly, str):
-            in_polygon = raw_poly.strip().lower() == "true"
-        else:
-            in_polygon = bool(raw_poly)
+        in_polygon = bool(raw_poly)
 
-        dist = context.get("distance_to_industrial_m")
-        try:
-            dist_m = float(dist) if dist is not None and dist != "" else 0.0
-        except ValueError:
-            dist_m = 0.0
-        if dist_m == 0.0 and not in_polygon:
-            dist_m = 10000.0
+    dist = context.get("distance_to_industrial_m")
+    try:
+        dist_m = float(dist) if dist is not None and dist != "" else 0.0
+    except ValueError:
+        dist_m = 0.0
+    if dist_m == 0.0 and not in_polygon:
+        dist_m = 10000.0
 
     lulc_code = normalize_lulc(context.get("lulc_class"))
     recurrence = context.get("recurrence_days_90d")

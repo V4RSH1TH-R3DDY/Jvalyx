@@ -159,6 +159,32 @@ export function useBackendReplay(
     return close;
   }, [enabled, status, applyEvent]);
 
+  // -- polling fallback: keeps the frame fresh while the socket is reconnecting --------
+  useEffect(() => {
+    if (!enabled || status !== 'online' || socketOpen) return;
+
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const [replay, events] = await Promise.all([
+          jvalyxApi.replayStatus(),
+          jvalyxApi.listEvents(),
+        ]);
+        if (cancelled) return;
+        setReplayStatus(replay);
+        applyEvent(events[0] ?? null);
+      } catch {
+        /* the socket reconnect loop will restore the live stream; keep polling */
+      }
+    };
+
+    const interval = setInterval(poll, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [enabled, status, socketOpen, applyEvent]);
+
   useEffect(
     () => () => {
       if (simulateTimer.current) clearTimeout(simulateTimer.current);

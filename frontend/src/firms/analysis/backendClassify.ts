@@ -19,9 +19,12 @@ export interface BackendClassification {
   isInIndustrialPolygon: boolean;
   distanceToIndustrialM: number;
   matchedFacility: string | null;
-  /** False whenever the model's `lulc_class` fell outside its trained vocabulary — true
-   * for essentially every live point, since there's no live land-cover source wired in
-   * yet (see `backend/models/artifacts/README.md`). Surface this, don't hide it. */
+  /** False whenever the model's `lulc_class` fell outside its trained vocabulary. Live
+   * points are looked up against real ESA WorldCover tiles (`backend/pipeline/landcover.py`,
+   * cached), so this is normally true; it goes false mainly when the live lookup fails
+   * (network error, cell not yet cached) and falls back to an unclassified code, or when a
+   * detection genuinely sits on a land-cover class the artifact never learned. Surface
+   * this, don't hide it. */
   lulcInVocabulary: boolean;
   modelVersion: string;
   anomalyModelVersion: string;

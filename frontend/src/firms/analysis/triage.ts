@@ -240,8 +240,11 @@ export function triageHotspot(
     plume,
     explanation,
     disclaimer: backend
-      ? `Classified by the trained CatBoost model (${backend.modelVersion}) via the Jvalyx backend. ` +
-        'No live land-cover source is wired in yet, so land-cover-dependent signal is limited outside mapped industrial zones.'
+      ? `Classified by the trained CatBoost model (${backend.modelVersion}) via the Jvalyx backend, using live ` +
+        'ESA WorldCover land cover and mapped industrial polygons.' +
+        (backend.lulcInVocabulary
+          ? ''
+          : ' Land cover at this point fell outside the trained vocabulary, so land-cover-dependent signal is limited here.')
       : 'OFFLINE FALLBACK: Jvalyx triage is a heuristic lens over a single NASA FIRMS detection — not a trained ' +
         'model output. It classifies context (industrial vs forest vs cropland), not verified incident type.',
     source: backend ? 'model' : 'heuristic',

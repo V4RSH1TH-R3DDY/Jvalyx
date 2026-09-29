@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SCENARIOS } from '../data/scenarios';
 import type { OperatorAuditEntry, RouteState, Scenario, ScenarioFrame } from '../types';
-import { computeRiskScore, generatePlumeCorridor, routeEvent } from '../utils/math';
+import { computeRiskScore, DEFAULT_ARBITRATION_CONFIG, generatePlumeCorridor, routeEvent } from '../utils/math';
 
 const SEED_AUDIT: OperatorAuditEntry[] = [
   {
@@ -161,9 +161,9 @@ export function useLocalReplay(enabled: boolean) {
       },
       decision: {
         ...baseFrame.decision,
-        class_id: simProbs[1] >= 0.45 ? 1 : baseFrame.decision.class_id,
+        class_id: simProbs[1] >= DEFAULT_ARBITRATION_CONFIG.class1_threshold ? 1 : baseFrame.decision.class_id,
         class_name:
-          simProbs[1] >= 0.45
+          simProbs[1] >= DEFAULT_ARBITRATION_CONFIG.class1_threshold
             ? 'Unusual Industrial Fire'
             : baseFrame.decision.class_name,
         class_probabilities: simProbs,

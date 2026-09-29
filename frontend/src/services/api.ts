@@ -226,23 +226,54 @@ export type JvalyxSocketMessage =
     }
   | { type: 'replay_status'; reason: string; status: BackendReplayStatus };
 
-/** Opens the live event stream. Returns a close function. */
+const RECONNECT_BASE_DELAY_MS = 1000;
+const RECONNECT_MAX_DELAY_MS = 15000;
+
+/**
+ * Opens the live event stream and keeps it open, reconnecting with exponential backoff
+ * (capped at 15s) whenever the connection drops. `onStatusChange` fires on every
+ * open/close transition so callers can reflect a dropped socket in the UI instead of
+ * silently going stale. Returns a function that closes the stream and stops reconnecting.
+ */
 export function connectEventStream(
   onMessage: (message: JvalyxSocketMessage) => void,
   onStatusChange?: (open: boolean) => void,
 ): () => void {
   const wsUrl = `${BASE_URL.replace(/^http/, 'ws')}/ws/events`;
-  const socket = new WebSocket(wsUrl);
+  let stopped = false;
+  let socket: WebSocket | null = null;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let attempt = 0;
 
-  socket.addEventListener('open', () => onStatusChange?.(true));
-  socket.addEventListener('close', () => onStatusChange?.(false));
-  socket.addEventListener('message', (event) => {
-    try {
-      onMessage(JSON.parse(event.data) as JvalyxSocketMessage);
-    } catch {
-      /* ignore malformed frames */
-    }
-  });
+  const connect = () => {
+    if (stopped) return;
+    socket = new WebSocket(wsUrl);
 
-  return () => socket.close();
+    socket.addEventListener('open', () => {
+      attempt = 0;
+      onStatusChange?.(true);
+    });
+    socket.addEventListener('close', () => {
+      onStatusChange?.(false);
+      if (stopped) return;
+      const delay = Math.min(RECONNECT_BASE_DELAY_MS * 2 ** attempt, RECONNECT_MAX_DELAY_MS);
+      attempt += 1;
+      reconnectTimer = setTimeout(connect, delay);
+    });
+    socket.addEventListener('message', (event) => {
+      try {
+        onMessage(JSON.parse(event.data) as JvalyxSocketMessage);
+      } catch {
+        /* ignore malformed frames */
+      }
+    });
+  };
+
+  connect();
+
+  return () => {
+    stopped = true;
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    socket?.close();
+  };
 }
